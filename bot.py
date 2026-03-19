@@ -31,21 +31,30 @@ def get_stock_data(kode: str, periode: str = "1mo"):
     ticker = kode.upper().strip()
     if not ticker.endswith(".JK"):
         ticker += ".JK"
-    try:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period=periode, auto_adjust=True)
-        if hist is None or hist.empty:
-            # Coba dengan period lebih panjang
-            hist = stock.history(period="3mo", auto_adjust=True)
-        info = {}
+
+    periodes = [periode, "3mo", "6mo"]
+    for p in periodes:
         try:
-            info = stock.info
-        except:
-            pass
-        return hist, info, ticker
-    except Exception as e:
-        logger.error(f"Error ambil data {ticker}: {e}")
-        return None, None, ticker
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            })
+            stock = yf.Ticker(ticker, session=session)
+            hist = stock.history(period=p, auto_adjust=True)
+            if hist is not None and not hist.empty and len(hist) >= 5:
+                info = {}
+                try:
+                    info = stock.info
+                except:
+                    pass
+                logger.info(f"Data {ticker} OK ({len(hist)} baris, period={p})")
+                return hist, info, ticker
+        except Exception as e:
+            logger.error(f"Error {ticker} period={p}: {e}")
+            continue
+
+    return None, None, ticker
 
 # ─── HELPER: Buat chart candlestick ──────────────────────────────────────────
 def buat_chart(kode: str, hist: pd.DataFrame) -> bytes:
