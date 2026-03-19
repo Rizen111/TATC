@@ -28,13 +28,20 @@ logger = logging.getLogger(__name__)
 
 # ─── HELPER: Ambil data saham IDX ────────────────────────────────────────────
 def get_stock_data(kode: str, periode: str = "1mo"):
-    ticker = kode.upper()
+    ticker = kode.upper().strip()
     if not ticker.endswith(".JK"):
         ticker += ".JK"
     try:
         stock = yf.Ticker(ticker)
-        hist = stock.history(period=periode)
-        info = stock.info
+        hist = stock.history(period=periode, auto_adjust=True)
+        if hist is None or hist.empty:
+            # Coba dengan period lebih panjang
+            hist = stock.history(period="3mo", auto_adjust=True)
+        info = {}
+        try:
+            info = stock.info
+        except:
+            pass
         return hist, info, ticker
     except Exception as e:
         logger.error(f"Error ambil data {ticker}: {e}")
