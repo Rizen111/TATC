@@ -1,7 +1,5 @@
 python-telegram-bot==20.7
 google-generativeai==0.3.2
-yfinance==0.2.36
 matplotlib==3.8.2
-mplfinance==0.12.10b0
 pandas==2.1.4
 requests==2.31.0
