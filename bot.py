@@ -23,13 +23,49 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ─── REQUEST COUNTER ──────────────────────────────────────────────────────────
+MAX_REQUEST_HARIAN = 25
+_counter = {"tanggal": "", "terpakai": 0}
+
+def pakai_request(jumlah: int = 1) -> dict:
+    hari_ini = datetime.now().strftime("%Y-%m-%d")
+    if _counter["tanggal"] != hari_ini:
+        _counter["tanggal"] = hari_ini
+        _counter["terpakai"] = 0
+    _counter["terpakai"] += jumlah
+    sisa = MAX_REQUEST_HARIAN - _counter["terpakai"]
+    return {"terpakai": _counter["terpakai"], "sisa": max(0, sisa)}
+
+def cek_request(jumlah: int = 1) -> bool:
+    hari_ini = datetime.now().strftime("%Y-%m-%d")
+    if _counter["tanggal"] != hari_ini:
+        return True
+    return (_counter["terpakai"] + jumlah) <= MAX_REQUEST_HARIAN
+
+def status_request() -> str:
+    hari_ini = datetime.now().strftime("%Y-%m-%d")
+    if _counter["tanggal"] != hari_ini:
+        terpakai, sisa = 0, MAX_REQUEST_HARIAN
+    else:
+        terpakai = _counter["terpakai"]
+        sisa = max(0, MAX_REQUEST_HARIAN - terpakai)
+    if sisa >= 15:
+        emoji = "🟢"
+    elif sisa >= 8:
+        emoji = "🟡"
+    elif sisa > 0:
+        emoji = "🔴"
+    else:
+        emoji = "⛔"
+    return f"{emoji} API: {sisa}/{MAX_REQUEST_HARIAN} request sisa hari ini"
+
+
 # ─── HELPER: Ambil data dari Alpha Vantage ────────────────────────────────────
 def get_stock_data(kode: str, periode: str = "1mo"):
     ticker = kode.upper().strip()
-    if not ticker.endswith(".JK"):
-        ticker_av = ticker + ".JK"
-    else:
-        ticker_av = ticker
+    # Alpha Vantage pakai format BBRI.JKT untuk IDX
+    ticker = ticker.replace(".JK", "").replace(".JKT", "")
+    ticker_av = ticker + ".JKT"
 
     try:
         url = "https://www.alphavantage.co/query"
@@ -159,6 +195,9 @@ def analisis_gemini(prompt: str, image_bytes: bytes = None) -> str:
         return f"❌ Error AI: {str(e)}"
 
 # ─── COMMAND: /start ──────────────────────────────────────────────────────────
+async def limit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(status_request())
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pesan = """🤖 *Bot Saham IDX — AI Powered*
 
@@ -166,11 +205,12 @@ Halo! Saya siap bantu analisis saham Indonesia kamu.
 
 📋 *Perintah tersedia:*
 
-📊 `/analisis BBRI` — Analisis teknikal \+ data saham
+📊 `/analisis BBRI` — Analisis teknikal + data saham
 🔍 `/screening` — Kandidat saham hari ini
 🎯 `/entry BBRI` — Strategi entry, SL & TP
 📈 `/chart BBRI` — Chart candlestick
 ℹ️ `/info BBRI` — Info dasar emiten
+📡 `/limit` — Cek sisa request hari ini
 
 📸 Kirim screenshot chart TradingView → AI langsung analisis!
 
@@ -276,12 +316,15 @@ Gunakan angka Rupiah yang spesifik. Format rapi dengan emoji."""
 
 # ─── COMMAND: /screening ──────────────────────────────────────────────────────
 async def screening(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("⏳ Screening saham IDX... (bisa 1-2 menit)")
+    await update.message.reply_text("⏳ Screening saham IDX... (butuh ~30 detik)")
 
-    kandidat_check = ["BBRI", "BBCA", "BMRI", "TLKM", "ASII", "GOTO", "BYAN", "ADRO", "INDF", "UNVR"]
+    import asyncio
+    # Batasi 5 saham saja agar hemat limit API (25/hari)
+    kandidat_check = ["BBRI", "BBCA", "BMRI", "TLKM", "ASII"]
     hasil_screening = []
 
     for kode in kandidat_check:
+        await asyncio.sleep(1.5)  # delay 1.5 detik antar request
         try:
             hist, _, _ = get_stock_data(kode, "3mo")
             if hist is None or len(hist) < 20:
@@ -398,3 +441,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
