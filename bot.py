@@ -172,10 +172,10 @@ Halo! Saya siap bantu analisis saham Indonesia kamu.
 📈 `/chart BBRI` — Chart candlestick
 ℹ️ `/info BBRI` — Info dasar emiten
 
-📸 *Kirim screenshot chart TradingView* → AI langsung analisis\!
+📸 Kirim screenshot chart TradingView → AI langsung analisis!
 
-_Contoh: /analisis BBRI atau /entry TLKM_"""
-    await update.message.reply_text(pesan, parse_mode="MarkdownV2")
+Contoh: /analisis BBRI atau /entry TLKM"""
+    await update.message.reply_text(pesan)
 
 # ─── COMMAND: /analisis ───────────────────────────────────────────────────────
 async def analisis(update: Update, context: ContextTypes.DEFAULT_TYPE):
