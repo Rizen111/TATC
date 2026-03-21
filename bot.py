@@ -430,6 +430,7 @@ Format dengan emoji, jelas dan actionable."""
 def main():
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("limit", limit))
     app.add_handler(CommandHandler("analisis", analisis))
     app.add_handler(CommandHandler("entry", entry))
     app.add_handler(CommandHandler("screening", screening))
